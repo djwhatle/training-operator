@@ -1,10 +1,17 @@
 # Build the manager binary
 FROM golang:1.14.9 as builder
 
+# Clone the common repo into the docker build ctx
+WORKDIR /
+RUN git clone https://github.com/djwhatle/common.git
+WORKDIR /common
+RUN git checkout v0.3.7-enable-partial-gang-schedule
+
 WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
+
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
 RUN go mod download
