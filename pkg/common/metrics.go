@@ -20,6 +20,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
+// Define const label values
+const (
+	NotDistributed   = "not_distributed"
+	Distributed      = "distributed"
+	NotGangScheduled = "not_gang_scheduled"
+	GangScheduled    = "gang_scheduled"
+)
+
 // Define all the prometheus counters for all jobs
 var (
 	jobsCreatedCount = promauto.NewCounterVec(
@@ -27,35 +35,35 @@ var (
 			Name: "training_operator_jobs_created_total",
 			Help: "Counts number of jobs created",
 		},
-		[]string{"job_namespace", "framework"},
+		[]string{"job_namespace", "framework", "distributed", "gang_scheduling"},
 	)
 	jobsDeletedCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "training_operator_jobs_deleted_total",
 			Help: "Counts number of jobs deleted",
 		},
-		[]string{"job_namespace", "framework"},
+		[]string{"job_namespace", "framework", "distributed", "gang_scheduling"},
 	)
 	jobsSuccessfulCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "training_operator_jobs_successful_total",
 			Help: "Counts number of jobs successful",
 		},
-		[]string{"job_namespace", "framework"},
+		[]string{"job_namespace", "framework", "distributed", "gang_scheduling"},
 	)
 	jobsFailedCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "training_operator_jobs_failed_total",
 			Help: "Counts number of jobs failed",
 		},
-		[]string{"job_namespace", "framework"},
+		[]string{"job_namespace", "framework", "distributed", "gang_scheduling"},
 	)
 	jobsRestartedCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "training_operator_jobs_restarted_total",
 			Help: "Counts number of jobs restarted",
 		},
-		[]string{"job_namespace", "framework"},
+		[]string{"job_namespace", "framework", "distributed", "gang_scheduling"},
 	)
 )
 
@@ -68,22 +76,38 @@ func init() {
 		jobsRestartedCount)
 }
 
-func CreatedJobsCounterInc(job_namespace, framework string) {
-	jobsCreatedCount.WithLabelValues(job_namespace, framework).Inc()
+func CreatedJobsCounterInc(job_namespace, framework, distributed, gang_scheduling string) {
+	jobsCreatedCount.WithLabelValues(job_namespace, framework, distributed, gang_scheduling).Inc()
 }
 
-func DeletedJobsCounterInc(job_namespace, framework string) {
-	jobsDeletedCount.WithLabelValues(job_namespace, framework).Inc()
+func DeletedJobsCounterInc(job_namespace, framework, distributed, gang_scheduling string) {
+	jobsDeletedCount.WithLabelValues(job_namespace, framework, distributed, gang_scheduling).Inc()
 }
 
-func SuccessfulJobsCounterInc(job_namespace, framework string) {
-	jobsSuccessfulCount.WithLabelValues(job_namespace, framework).Inc()
+func SuccessfulJobsCounterInc(job_namespace, framework, distributed, gang_scheduling string) {
+	jobsSuccessfulCount.WithLabelValues(job_namespace, framework, distributed, gang_scheduling).Inc()
 }
 
-func FailedJobsCounterInc(job_namespace, framework string) {
-	jobsFailedCount.WithLabelValues(job_namespace, framework).Inc()
+func FailedJobsCounterInc(job_namespace, framework, distributed, gang_scheduling string) {
+	jobsFailedCount.WithLabelValues(job_namespace, framework, distributed, gang_scheduling).Inc()
 }
 
-func RestartedJobsCounterInc(job_namespace, framework string) {
-	jobsRestartedCount.WithLabelValues(job_namespace, framework).Inc()
+func RestartedJobsCounterInc(job_namespace, framework, distributed, gang_scheduling string) {
+	jobsRestartedCount.WithLabelValues(job_namespace, framework, distributed, gang_scheduling).Inc()
+}
+
+func MapBoolToDistributed(distributed bool) string {
+	if distributed {
+		return Distributed
+	} else {
+		return NotDistributed
+	}
+}
+
+func MapBoolToGangScheduling(gangScheduled bool) string {
+	if gangScheduled {
+		return GangScheduled
+	} else {
+		return NotGangScheduled
+	}
 }

@@ -373,7 +373,9 @@ func (r *TFJobReconciler) DeleteJob(job interface{}) error {
 
 	r.recorder.Eventf(tfJob, v1.EventTypeNormal, SuccessfulDeleteJobReason, "Deleted job: %v", tfJob.Name)
 	log.Infof("job %s/%s has been deleted", tfJob.Namespace, tfJob.Name)
-	trainingoperatorcommon.DeletedJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName)
+	distributed := trainingoperatorcommon.MapBoolToDistributed(isDistributed(tfJob))
+	gangSchedulerSet := trainingoperatorcommon.MapBoolToGangScheduling(commonutil.IsGangSchedulerSet(tfJob.Spec.TFReplicaSpecs, ""))
+	trainingoperatorcommon.DeletedJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName, distributed, gangSchedulerSet)
 	return nil
 }
 
@@ -461,7 +463,9 @@ func (r *TFJobReconciler) UpdateJobStatus(job interface{}, replicas map[commonv1
 						commonutil.LoggerForJob(tfJob).Infof("Append tfjob condition error: %v", err)
 						return err
 					}
-					trainingoperatorcommon.SuccessfulJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName)
+					distributed := trainingoperatorcommon.MapBoolToDistributed(isDistributed(tfJob))
+					gangSchedulerSet := trainingoperatorcommon.MapBoolToGangScheduling(commonutil.IsGangSchedulerSet(tfJob.Spec.TFReplicaSpecs, ""))
+					trainingoperatorcommon.SuccessfulJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName, distributed, gangSchedulerSet)
 				}
 			}
 		} else {
@@ -483,7 +487,9 @@ func (r *TFJobReconciler) UpdateJobStatus(job interface{}, replicas map[commonv1
 						commonutil.LoggerForJob(tfJob).Infof("Append tfjob condition error: %v", err)
 						return err
 					}
-					trainingoperatorcommon.SuccessfulJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName)
+					distributed := trainingoperatorcommon.MapBoolToDistributed(isDistributed(tfJob))
+					gangSchedulerSet := trainingoperatorcommon.MapBoolToGangScheduling(commonutil.IsGangSchedulerSet(tfJob.Spec.TFReplicaSpecs, ""))
+					trainingoperatorcommon.SuccessfulJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName, distributed, gangSchedulerSet)
 				} else if running > 0 {
 					// Some workers are still running, leave a running condition.
 					msg := fmt.Sprintf("TFJob %s/%s is running.",
@@ -508,7 +514,9 @@ func (r *TFJobReconciler) UpdateJobStatus(job interface{}, replicas map[commonv1
 			if restart {
 				// job is restarting, no need to set it failed
 				// we know it because we update the status condition when reconciling the replicas
-				trainingoperatorcommon.RestartedJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName)
+				distributed := trainingoperatorcommon.MapBoolToDistributed(isDistributed(tfJob))
+				gangSchedulerSet := trainingoperatorcommon.MapBoolToGangScheduling(commonutil.IsGangSchedulerSet(tfJob.Spec.TFReplicaSpecs, ""))
+				trainingoperatorcommon.RestartedJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName, distributed, gangSchedulerSet)
 			} else {
 				msg := fmt.Sprintf("TFJob %s/%s has failed because %d %s replica(s) failed.",
 					tfJob.Namespace, tfJob.Name, failed, rtype)
@@ -523,7 +531,9 @@ func (r *TFJobReconciler) UpdateJobStatus(job interface{}, replicas map[commonv1
 					commonutil.LoggerForJob(tfJob).Infof("Append tfjob condition error: %v", err)
 					return err
 				}
-				trainingoperatorcommon.FailedJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName)
+				distributed := trainingoperatorcommon.MapBoolToDistributed(isDistributed(tfJob))
+				gangSchedulerSet := trainingoperatorcommon.MapBoolToGangScheduling(commonutil.IsGangSchedulerSet(tfJob.Spec.TFReplicaSpecs, ""))
+				trainingoperatorcommon.FailedJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName, distributed, gangSchedulerSet)
 			}
 		}
 	}
@@ -754,7 +764,9 @@ func (r *TFJobReconciler) ReconcilePods(
 						commonutil.LoggerForJob(tfJob).Infof("Append tfjob condition error: %v", err)
 						return err
 					}
-					trainingoperatorcommon.RestartedJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName)
+					distributed := trainingoperatorcommon.MapBoolToDistributed(isDistributed(tfJob))
+					gangSchedulerSet := trainingoperatorcommon.MapBoolToGangScheduling(commonutil.IsGangSchedulerSet(tfJob.Spec.TFReplicaSpecs, ""))
+					trainingoperatorcommon.RestartedJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName, distributed, gangSchedulerSet)
 				}
 			}
 
@@ -870,7 +882,11 @@ func (r *TFJobReconciler) onOwnerCreateFunc() func(event.CreateEvent) bool {
 		r.Scheme.Default(tfJob)
 		msg := fmt.Sprintf("TFJob %s is created.", e.Object.GetName())
 		logrus.Info(msg)
-		trainingoperatorcommon.CreatedJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName)
+
+		distributed := trainingoperatorcommon.MapBoolToDistributed(isDistributed(tfJob))
+		gangSchedulerSet := trainingoperatorcommon.MapBoolToGangScheduling(commonutil.IsGangSchedulerSet(tfJob.Spec.TFReplicaSpecs, ""))
+
+		trainingoperatorcommon.CreatedJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName, distributed, gangSchedulerSet)
 		if err := commonutil.UpdateJobConditions(&tfJob.Status, commonv1.JobCreated, "TFJobCreated", msg); err != nil {
 			log.Log.Error(err, "append job condition error")
 			return false

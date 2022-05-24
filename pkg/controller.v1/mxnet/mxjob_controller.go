@@ -315,7 +315,8 @@ func (r *MXJobReconciler) DeleteJob(job interface{}) error {
 	}
 	r.Recorder.Eventf(mxjob, corev1.EventTypeNormal, control.SuccessfulDeletePodReason, "Deleted job: %v", mxjob.Name)
 	logrus.Info("job deleted", "namespace", mxjob.Namespace, "name", mxjob.Name)
-	trainingoperatorcommon.DeletedJobsCounterInc(mxjob.Namespace, mxjobv1.FrameworkName)
+
+	trainingoperatorcommon.DeletedJobsCounterInc(mxjob.Namespace, mxjobv1.FrameworkName, trainingoperatorcommon.NotDistributed, trainingoperatorcommon.NotGangScheduled)
 	return nil
 }
 
@@ -373,7 +374,8 @@ func (r *MXJobReconciler) UpdateJobStatus(job interface{}, replicas map[commonv1
 				logrus.Infof("Append mxjob condition error: %v", err)
 				return err
 			}
-			trainingoperatorcommon.SuccessfulJobsCounterInc(mxjob.Namespace, mxjobv1.FrameworkName)
+
+			trainingoperatorcommon.SuccessfulJobsCounterInc(mxjob.Namespace, mxjobv1.FrameworkName, trainingoperatorcommon.NotDistributed, trainingoperatorcommon.NotGangScheduled)
 		}
 
 		if failed > 0 {
@@ -385,7 +387,7 @@ func (r *MXJobReconciler) UpdateJobStatus(job interface{}, replicas map[commonv1
 					logrus.Infof("Append job condition error: %v", err)
 					return err
 				}
-				trainingoperatorcommon.RestartedJobsCounterInc(mxjob.Namespace, mxjobv1.FrameworkName)
+				trainingoperatorcommon.RestartedJobsCounterInc(mxjob.Namespace, mxjobv1.FrameworkName, trainingoperatorcommon.NotDistributed, trainingoperatorcommon.NotGangScheduled)
 			} else {
 				msg := fmt.Sprintf("mxjob %s is failed because %d %s replica(s) failed.", mxjob.Name, failed, rtype)
 				r.Recorder.Event(mxjob, corev1.EventTypeNormal, mxJobFailedReason, msg)
@@ -398,7 +400,7 @@ func (r *MXJobReconciler) UpdateJobStatus(job interface{}, replicas map[commonv1
 					logrus.Infof("Append job condition error: %v", err)
 					return err
 				}
-				trainingoperatorcommon.FailedJobsCounterInc(mxjob.Namespace, mxjobv1.FrameworkName)
+				trainingoperatorcommon.FailedJobsCounterInc(mxjob.Namespace, mxjobv1.FrameworkName, trainingoperatorcommon.NotDistributed, trainingoperatorcommon.NotGangScheduled)
 			}
 		}
 	}
@@ -455,7 +457,7 @@ func (r *MXJobReconciler) onOwnerCreateFunc() func(event.CreateEvent) bool {
 		r.Scheme.Default(mxjob)
 		msg := fmt.Sprintf("MXJob %s is created.", e.Object.GetName())
 		logrus.Info(msg)
-		trainingoperatorcommon.CreatedJobsCounterInc(mxjob.Namespace, mxjobv1.FrameworkName)
+		trainingoperatorcommon.CreatedJobsCounterInc(mxjob.Namespace, mxjobv1.FrameworkName, trainingoperatorcommon.NotDistributed, trainingoperatorcommon.NotGangScheduled)
 		if err := commonutil.UpdateJobConditions(&mxjob.Status, commonv1.JobCreated, "MXJobCreated", msg); err != nil {
 			logrus.Error(err, "append job condition error")
 			return false
