@@ -762,16 +762,42 @@ func (r *TFJobReconciler) ReconcilePods(
 				}
 			}
 			// Check if the pod is retryable.
+			podRestarted := false
 			if spec.RestartPolicy == commonv1.RestartPolicyExitCode {
 				if pod.Status.Phase == v1.PodFailed && train_util.IsRetryableExitCode(exitCode) {
 					logger.Infof("Need to restart the pod: %v.%v", pod.Namespace, pod.Name)
 					if err := r.PodControl.DeletePod(pod.Namespace, pod.Name, tfJob); err != nil {
 						return err
 					}
+					podRestarted = true
 
 					// with common library framework, we have to handle restart status here
 					// or we won't know which replica has been restarted in updateJobStatus after reconciling all replicas
 					msg := fmt.Sprintf("TFJob %s is restarting because %s replica(s) failed.",
+						tfJob.Name, rtype)
+					r.Recorder.Event(tfJob, corev1.EventTypeWarning, tfJobRestartingReason, msg)
+					err := commonutil.UpdateJobConditions(jobStatus, commonv1.JobRestarting, tfJobRestartingReason, msg)
+					if err != nil {
+						commonutil.LoggerForJob(tfJob).Infof("Append tfjob condition error: %v", err)
+						return err
+					}
+					distributed := trainingoperatorcommon.MapBoolToDistributed(isDistributed(tfJob))
+					gangSchedulerSet := trainingoperatorcommon.MapBoolToGangScheduling(commonutil.IsGangSchedulerSet(tfJob.Spec.TFReplicaSpecs, ""))
+					trainingoperatorcommon.RestartedJobsCounterInc(tfJob.Namespace, tensorflowv1.FrameworkName, distributed, gangSchedulerSet)
+				}
+			}
+			// Handle unexpected node shutdowns from "Pod was terminated in response to imminent node shutdown."
+			if pod.Status.Phase == v1.PodFailed && !podRestarted {
+				if pod.Status.Message == "Pod was terminated in response to imminent node shutdown." {
+					logger.Infof("Need to restart the pod due to imminent node shutdown: %v.%v", pod.Namespace, pod.Name)
+					if err := r.PodControl.DeletePod(pod.Namespace, pod.Name, tfJob); err != nil {
+						return err
+					}
+					podRestarted = true
+
+					// with common library framework, we have to handle restart status here
+					// or we won't know which replica has been restarted in updateJobStatus after reconciling all replicas
+					msg := fmt.Sprintf("TFJob %s is restarting because %s replica(s) node shutdown .",
 						tfJob.Name, rtype)
 					r.Recorder.Event(tfJob, corev1.EventTypeWarning, tfJobRestartingReason, msg)
 					err := commonutil.UpdateJobConditions(jobStatus, commonv1.JobRestarting, tfJobRestartingReason, msg)
