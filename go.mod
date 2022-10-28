@@ -22,6 +22,8 @@ require (
 	volcano.sh/apis v1.2.0-k8s1.19.6
 )
 
+replace github.com/kubeflow/common v0.4.3 => ../common
+
 require (
 	cloud.google.com/go v0.81.0 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect

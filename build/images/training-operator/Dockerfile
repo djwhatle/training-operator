@@ -1,6 +1,12 @@
 # Build the manager binary
 FROM golang:1.17 as builder
 
+# Clone the common repo into the docker build ctx
+WORKDIR /
+RUN git clone https://github.com/djwhatle/common.git
+WORKDIR /common
+RUN git checkout v0.4.3
+
 WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod

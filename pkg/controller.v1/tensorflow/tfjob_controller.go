@@ -854,23 +854,24 @@ func (r *TFJobReconciler) createNewPod(tfjob *kubeflowv1.TFJob, rt, index string
 	setRestartPolicy(podTemplate, spec)
 
 	// if gang-scheduling is enabled:
-	// 1. if user has specified other scheduler, we report a warning without overriding any fields.
-	// 2. if no SchedulerName is set for pods, then we set the SchedulerName to "volcano".
+	// 1. make sure all replicas have scheduleName set to volcano
+	// 1. if user hasn't specified volcano scheduler for all steps, we skip setup of pod annotations and perform regular scheduling
+
 	if r.Config.EnableGangScheduling {
-		podSchedulerName := util.GetSchedulerName(replicas)
-		if len(podSchedulerName) == 0 {
-			podTemplate.Spec.SchedulerName = gangSchedulerName
-		} else if strings.Compare(podSchedulerName, gangSchedulerName) != 0 {
-			errMsg := "Another scheduler is specified when gang-scheduling is enabled and it will not be overwritten"
+		// Only proceed if all replicas are explicitly specified with spec.schedulerName = volcano
+		if commonutil.IsGangSchedulerSet(replicas, gangSchedulerName) {
+			if podTemplate.Annotations == nil {
+				podTemplate.Annotations = map[string]string{}
+			}
+			logger.Infof("Setting annotation %s=%s", gangSchedulingPodGroupAnnotation, tfjob.GetName())
+			podTemplate.Annotations[gangSchedulingPodGroupAnnotation] = tfjob.GetName()
+			logger.Infof("Setting annotation %s=%s", volcanoTaskSpecKey, rt)
+			podTemplate.Annotations[volcanoTaskSpecKey] = rt
+		} else {
+			errMsg := "Some replicas don't have schedulerName = volcano, skipping gang scheduling setup"
 			logger.Warning(errMsg)
 			r.Recorder.Event(tfjob, v1.EventTypeWarning, podTemplateSchedulerNameReason, errMsg)
 		}
-
-		if podTemplate.Annotations == nil {
-			podTemplate.Annotations = map[string]string{}
-		}
-		podTemplate.Annotations[gangSchedulingPodGroupAnnotation] = tfjob.GetName()
-		podTemplate.Annotations[volcanoTaskSpecKey] = rt
 	}
 
 	err = r.PodControl.CreatePodsWithControllerRef(tfjob.Namespace, podTemplate, tfjob, controllerRef)
