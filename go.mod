@@ -22,7 +22,7 @@ require (
 	volcano.sh/apis v1.2.0-k8s1.19.6
 )
 
-replace github.com/kubeflow/common v0.3.7 => ../common
+replace github.com/kubeflow/common v0.4.3 => ../common
 
 require (
 	cloud.google.com/go v0.81.0 // indirect
@@ -90,5 +90,3 @@ require (
 	sigs.k8s.io/json v0.0.0-20220525155127-227cbc7cc124 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 )
-
-
